@@ -22,3 +22,4 @@ Drinks: a list of water intakes.
 
 - volume (always uses mL)
 - time (time of entry for manual water entry, time of drink for smart water bottles)
+- source
