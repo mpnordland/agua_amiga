@@ -11,7 +11,7 @@ I've got 6 features planned:
 
 # Data model
 
-Note about units: the UI ill allow using either mL or oz. The program will always use mL in the data. It will convert
+Note about units: the UI will allow using either mL or oz. The program will always use mL in the data. It will convert
 to oz when needed to display information.
 
 Goals: a list of daily goals. Most recent row is current goal. End time of goal is implied by start time of next goal.
