@@ -43,7 +43,6 @@ class BluetoothScanner:
         self.adapter.SetDiscoveryFilter({'Transport': Variant.new_string('le')})
         self.adapter.StartDiscovery()
 
-
     def stop_scanner(self):
         self.adapter.StopDiscovery()
         if self.interfaces_added_subscription is not None:
@@ -52,7 +51,6 @@ class BluetoothScanner:
     def get_devices(self):
         return self.devices
 
-
     def _interface_added_listener(self, path, interfaces):
         if 'org.bluez.Device1' in interfaces.keys() and not interfaces['org.bluez.Device1']['Blocked'].value:
             self.devices[path] = interfaces
@@ -60,3 +58,40 @@ class BluetoothScanner:
     def _interface_removed_listener(self, path, interfaces):
         if path in self.devices.keys() and 'org.bluez.Device1' in interfaces.keys():
             del self.devices[path]
+
+
+class WaterBottle:
+    """
+    right now contains logic for Hidrate Spark 3
+    probably need to lots of abstraction/generalizing
+    to work with other water bottles, which I don't have or know about existing.
+    """
+    BOTTLE_SIZE = 592
+    SIPS_CHARACTERISTIC_UUID = '016e11b1-6c8a-4074-9e5a-076053f93784'
+    def __init__(self, system_bus, bluez, device) -> None:
+        """
+        connect to device, find correct characteristic, read value, parse it,
+        setup notifications then read sips
+        """
+
+
+    def parseSip(self, data):
+        """
+        parses sips from data sent by water bottle.
+        code taken from https://github.com/choonkiatlee/wban-python/commit/3c644a32702f2a37e7a9c10f49bc5ebfcbf0a688#diff-de5804e048e763f99ae84940f91d80e11b58f1b69da346d32a17abd6940e7db4R85
+        """
+        # Parsed from dataPointCharacteristicDidUpdate in RxBLEConnectCoordinator.java
+        no_sips_left_on_device = data[0]
+        b2 = data[1] & 255          # Likely some version of sip size as percentage of bottle fullness
+
+        SipSize = (self.BOTTLE_SIZE * b2) / 100
+
+        # This bit of list comprehension magic gets us [data[3], data[2]]
+        total = int.from_bytes(data[3:1:-1], "little") & 65535
+
+        secondsAgo = int.from_bytes(data[8:4:-1], "little") & -1
+
+        print("Sip Size: {0}, Total: {1}, Seconds Ago: {2}, Sips Left: {3}".format(
+            SipSize, total, secondsAgo, no_sips_left_on_device - 1))
+
+        return SipSize, total, secondsAgo, no_sips_left_on_device
