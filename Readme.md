@@ -23,3 +23,9 @@ Drinks: a list of water intakes.
 - volume (always uses mL)
 - time (time of entry for manual water entry, time of drink for smart water bottles)
 - source
+
+
+# managing devices
+
+We talk to bluez bluetooth devices over dbus. The pydbus library is integrated with the Glib MainLoop.
+The understanding so far, is that as devices are discovered, the events will be triggered inside of the MainLoop and will get processed, including reading sip data and storing it in the sips_stream deque property on the bluetooth scanner. Then there will be an idle callback that will pull all the queued sip data and update the UI and write to the database.

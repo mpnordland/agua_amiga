@@ -1,6 +1,9 @@
-from types import NoneType
-from gi.repository import GLib
+from datetime import timedelta, datetime
+from collections import deque
+from gi.repository import GLib, Gio
 from pydbus import SystemBus, Variant
+
+import BLE_GATT
 
 
 class BluetoothNotSupported(Exception):
@@ -12,7 +15,7 @@ class BluetoothScanner:
     def __init__(self) -> None:
         self.interfaces_added_subscription = None
         self.interfaces_removed_subscription = None
-
+        self.sip_stream = deque()
         self.devices = {}
 
         try:
@@ -20,12 +23,15 @@ class BluetoothScanner:
             self.bluez = self.system_bus.get('org.bluez', '/')
 
             self.adapter = None
-            for path, child in self.bluez.GetManagedObjects():
+            for path, child in self.bluez.GetManagedObjects().items():
                 if 'org.bluez.Adapter1' in child.keys():
                     self.adapter = self.system_bus.get('org.bluez', path)
-                    break
+
+                else:
+                    self._interface_added_listener(path, child)
 
         except Exception as e:
+            print(e)
             raise BluetoothNotSupported("Unable to initialize Bluetooth scanning")
 
         if self.adapter is None:
@@ -47,16 +53,21 @@ class BluetoothScanner:
         self.adapter.StopDiscovery()
         if self.interfaces_added_subscription is not None:
             self.interfaces_added_subscription.disconnect()
+        
+        if self.interfaces_removed_subscription is not None:
+            self.interfaces_removed_subscription.disconnect()
 
     def get_devices(self):
         return self.devices
 
     def _interface_added_listener(self, path, interfaces):
-        if 'org.bluez.Device1' in interfaces.keys() and not interfaces['org.bluez.Device1']['Blocked'].value:
-            self.devices[path] = interfaces
+
+        if 'org.bluez.Device1' in interfaces.keys() and not interfaces['org.bluez.Device1']['Blocked'] and interfaces['org.bluez.Device1']['Alias'] in ['h2o10C28']:
+            self.devices[path] = WaterBottle(interfaces['org.bluez.Device1'], self.sip_stream)
 
     def _interface_removed_listener(self, path, interfaces):
-        if path in self.devices.keys() and 'org.bluez.Device1' in interfaces.keys():
+        if path in self.devices.keys() and 'org.bluez.Device1' in interfaces:
+            self.devices[path].cleanup()
             del self.devices[path]
 
 
@@ -68,11 +79,32 @@ class WaterBottle:
     """
     BOTTLE_SIZE = 592
     SIPS_CHARACTERISTIC_UUID = '016e11b1-6c8a-4074-9e5a-076053f93784'
-    def __init__(self, system_bus, bluez, device) -> None:
+
+    def __init__(self, device_info, sip_stream) -> None:
         """
         connect to device, find correct characteristic, read value, parse it,
         setup notifications then read sips
         """
+        self.sip_stream = sip_stream
+
+        self.name = device_info['Alias']
+        self.device = BLE_GATT.Central(device_info['Address'])
+        self.device.connect()
+        self.device.on_value_change(self.SIPS_CHARACTERISTIC_UUID, self.sips_notification_handler)
+        value = self.device.char_read(self.SIPS_CHARACTERISTIC_UUID)
+        SipSize, total, secondsAgo, no_sips_left_on_device = self.parseSip(value)
+
+        if no_sips_left_on_device > 0:
+            self.device.char_write(self.SIPS_CHARACTERISTIC_UUID, bytes.fromhex("57"))
+
+    def sips_notification_handler(self, value):
+        SipSize, total, secondsAgo, no_sips_left_on_device = self.parseSip(value)
+        if SipSize > 0:
+            self.sip_stream.appendleft((SipSize, datetime.now() - timedelta(seconds=secondsAgo), "waterbottle"))
+
+        if no_sips_left_on_device > 0:
+            self.device.char_write(self.SIPS_CHARACTERISTIC_UUID, bytes.fromhex("57"))
+
 
 
     def parseSip(self, data):
@@ -95,3 +127,7 @@ class WaterBottle:
             SipSize, total, secondsAgo, no_sips_left_on_device - 1))
 
         return SipSize, total, secondsAgo, no_sips_left_on_device
+
+
+    def cleanup(self):
+        self.device.remove_notify(self.SIPS_CHARACTERISTIC_UUID)
