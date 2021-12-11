@@ -11,6 +11,7 @@ class MainWindow(Gtk.ApplicationWindow):
 
     button_add_water: Gtk.Button = Gtk.Template.Child()
     list_devices: Gtk.ListBox = Gtk.Template.Child()
+    progress_daily_goal: Gtk.ProgressBar = Gtk.Template.Child()
 
     @Gtk.Template.Callback()
     def button_add_water_clicked_cb(self, widget, **_kwargs):
