@@ -22,6 +22,8 @@ class MainWindow(Gtk.ApplicationWindow):
         super().__init__(*args, **kwargs)
 
         self.streak_window = None
+        self.bluetooth_enabled = True
+
     @Gtk.Template.Callback()
     def button_add_water_clicked_cb(self, widget, **_kwargs):
         assert self.button_add_water == widget
@@ -36,6 +38,7 @@ class MainWindow(Gtk.ApplicationWindow):
                 self.datastore.save_sip(volume, datetime.now(), "manual")
 
         dialog.destroy()
+        self.update_goal_progress_bar()
 
     @Gtk.Template.Callback()
     def button_preferences_clicked_cb(self, widget, **_kwargs):
@@ -67,6 +70,8 @@ class MainWindow(Gtk.ApplicationWindow):
 
         dialog.destroy()
 
+        self.update_goal_progress_bar()
+
     def ensure_goal_set(self):
         if self.datastore.get_daily_goal_volume() == 0:
             self.show_preferences_dialog()
@@ -78,3 +83,19 @@ class MainWindow(Gtk.ApplicationWindow):
         self.progress_daily_goal.set_fraction(convert_from_mL_to_display(vol_drank_today / goal_volume, display_units))
         self.progress_daily_goal.set_text(
             f"{convert_from_mL_to_display(vol_drank_today, display_units):.2f} of {convert_from_mL_to_display(goal_volume, display_units):.2f} {display_units.value}")
+
+
+    def mark_bluetooth_disabled(self):
+        msg = "Bluetooth scanning failed to start or isn't supported"
+        label = Gtk.Label(label=msg)
+        label.show()
+        self.list_devices.set_placeholder(label)
+        self.list_devices.show_all()
+        self.bluetooth_enabled = False
+
+    def update_device_list(self, devices):
+        self.list_devices.foreach(lambda child: child.destroy())
+        for dev_name in devices:
+            self.list_devices.add(Gtk.Label(label=dev_name))
+
+        self.list_devices.show_all()

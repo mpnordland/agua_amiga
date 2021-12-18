@@ -1,5 +1,6 @@
 from datetime import timedelta, datetime
 from collections import deque
+import time
 from gi.repository import GLib, Gio
 from pydbus import SystemBus, Variant
 
@@ -18,21 +19,29 @@ class BluetoothScanner:
         self.sip_stream = deque()
         self.devices = {}
 
-        try:
-            self.system_bus = SystemBus()
-            self.bluez = self.system_bus.get('org.bluez', '/')
+        # sometimes when the app is closed and then immediately restarted
+        # bluez or DBus just disconnects immediately when we try to read out
+        # the bluez objects. A retry after a short wait seems to address that.
+        for attempt in range(1, 4):
+            try:
+                self.system_bus = SystemBus()
+                self.bluez = self.system_bus.get('org.bluez', '/')
 
-            self.adapter = None
-            for path, child in self.bluez.GetManagedObjects().items():
-                if 'org.bluez.Adapter1' in child.keys():
-                    self.adapter = self.system_bus.get('org.bluez', path)
+                self.adapter = None
+                for path, child in self.bluez.GetManagedObjects().items():
+                    if 'org.bluez.Adapter1' in child.keys():
+                        self.adapter = self.system_bus.get('org.bluez', path)
 
+                    else:
+                        self._interface_added_listener(path, child)
+
+                break
+
+            except Exception as e:
+                if attempt < 3:
+                    time.sleep(0.5)
                 else:
-                    self._interface_added_listener(path, child)
-
-        except Exception as e:
-            print(e)
-            raise BluetoothNotSupported("Unable to initialize Bluetooth scanning")
+                    raise BluetoothNotSupported("Unable to initialize Bluetooth scanning")
 
         if self.adapter is None:
             raise BluetoothNotSupported("Could not find Bluetooth adapter")
@@ -59,6 +68,8 @@ class BluetoothScanner:
 
         for device in self.devices.values():
             device.cleanup()
+
+        self.system_bus.con.close_sync(None)
 
     def get_devices(self):
         return self.devices

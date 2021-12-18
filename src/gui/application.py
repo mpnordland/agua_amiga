@@ -1,3 +1,4 @@
+from datetime import timedelta
 import os
 import os.path
 import gi
@@ -6,7 +7,7 @@ gi.require_version("Notify", "0.7")
 from gi.repository import GLib, Gio, Gtk, Notify, Gdk
 
 from .main_window import MainWindow
-from bluetooth_scanner import BluetoothScanner
+from bluetooth_scanner import BluetoothNotSupported, BluetoothScanner
 from datastore import Datastore
 
 
@@ -15,7 +16,10 @@ class Application(Gtk.Application):
         super().__init__(*args, application_id="me.rehack.agua_amiga",
                          flags=Gio.ApplicationFlags.FLAGS_NONE, **kwargs)
         self.window = None
-        self.scanner = BluetoothScanner()
+        try:
+            self.scanner = BluetoothScanner()
+        except BluetoothNotSupported as e:
+            self.scanner = None
 
         data_path = GLib.get_user_data_dir() + '/agua_amiga/'
 
@@ -41,32 +45,33 @@ class Application(Gtk.Application):
         
 
 
-    def update_device_list(self):
-        devices = self.scanner.get_devices()
-        if self.window is not None:
-            self.window.list_devices.foreach(lambda child: child.destroy())
-            for _, dev in devices.items():
-                self.window.list_devices.add(Gtk.Label(label=dev.name))
-
-            self.window.list_devices.show_all()
-
+    def update(self):
+        have_updates = False
+        if self.scanner and self.window:
+            have_updates = len(self.scanner.sip_stream) > 0
             while len(self.scanner.sip_stream):
                 sip = self.scanner.sip_stream.pop()
                 self.datastore.save_sip(*sip)
 
-            self.window.update_goal_progress_bar()
+            devices = self.scanner.get_devices()
+            self.window.update_device_list([dev.name for dev in devices.values()])
 
+        if self.window is not None and have_updates:
+            self.window.update_goal_progress_bar()
+        
         return True  # so this method keeps getting called from the timeout
 
     def do_activate(self):
         self.window = self.window or MainWindow(application=self, datastore=self.datastore)
         self.window.ensure_goal_set()
         self.window.update_goal_progress_bar()
-        self.scanner.start_scanner()
+        if self.scanner:
+            self.scanner.start_scanner()
+        else:
+            self.window.mark_bluetooth_disabled()
 
 
-        one_hour = 60 * 60
-        GLib.timeout_add_seconds(5, self.update_device_list)
+        GLib.timeout_add_seconds(5, self.update)
         GLib.timeout_add_seconds(timedelta(hours=1).seconds, self.remind_to_drink)
 
 
@@ -75,7 +80,8 @@ class Application(Gtk.Application):
 
 
     def on_quit(self, widget):
-        self.scanner.stop_scanner()
+        if self.scanner:
+            self.scanner.stop_scanner()
 
 
     def remind_to_drink(self):
