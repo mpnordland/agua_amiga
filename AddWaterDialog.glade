@@ -2,9 +2,15 @@
 <!-- Generated with glade 3.38.2 -->
 <interface>
   <requires lib="gtk+" version="3.24"/>
+  <object class="GtkAdjustment" id="add_water_adjustment">
+    <property name="upper">10000</property>
+    <property name="step-increment">1</property>
+    <property name="page-increment">10</property>
+  </object>
   <template class="AddWaterDialog" parent="GtkDialog">
     <property name="can-focus">False</property>
     <property name="type">popup</property>
+    <property name="title" translatable="yes">Add Water</property>
     <property name="window-position">center-on-parent</property>
     <property name="type-hint">dialog</property>
     <child internal-child="vbox">
@@ -83,9 +89,12 @@
                 <property name="can-focus">False</property>
                 <property name="spacing">4</property>
                 <child>
-                  <object class="GtkSpinButton">
+                  <object class="GtkSpinButton" id="spin_button_add_water">
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
+                    <property name="adjustment">add_water_adjustment</property>
+                    <property name="digits">2</property>
+                    <property name="numeric">True</property>
                   </object>
                   <packing>
                     <property name="expand">True</property>
@@ -94,7 +103,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="label_units">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <property name="label" translatable="yes">Units</property>

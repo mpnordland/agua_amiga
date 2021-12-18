@@ -2,9 +2,15 @@
 <!-- Generated with glade 3.38.2 -->
 <interface>
   <requires lib="gtk+" version="3.24"/>
+  <object class="GtkAdjustment" id="adjustment_daily_goal_volume">
+    <property name="upper">10000</property>
+    <property name="step-increment">1</property>
+    <property name="page-increment">10</property>
+  </object>
   <template class="PreferencesDialog" parent="GtkDialog">
     <property name="can-focus">False</property>
     <property name="type">popup</property>
+    <property name="title" translatable="yes">Agua Amiga Preferences</property>
     <property name="window-position">center-on-parent</property>
     <property name="icon-name">preferences-other-symbolic</property>
     <property name="type-hint">dialog</property>
@@ -77,11 +83,12 @@
               </packing>
             </child>
             <child>
-              <object class="GtkSpinButton">
+              <object class="GtkSpinButton" id="spin_button_goal_volume">
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
                 <property name="input-purpose">number</property>
                 <property name="orientation">vertical</property>
+                <property name="adjustment">adjustment_daily_goal_volume</property>
                 <property name="digits">1</property>
                 <property name="numeric">True</property>
               </object>
@@ -112,7 +119,7 @@
                 <property name="can-focus">False</property>
                 <property name="orientation">vertical</property>
                 <child>
-                  <object class="GtkRadioButton" id="radiobutton1">
+                  <object class="GtkRadioButton" id="radio_display_units_oz">
                     <property name="label" translatable="yes">Ounces</property>
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
@@ -127,14 +134,14 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkRadioButton">
+                  <object class="GtkRadioButton" id="radio_display_units_ml">
                     <property name="label" translatable="yes">Milliliters</property>
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
                     <property name="receives-default">False</property>
                     <property name="active">True</property>
                     <property name="draw-indicator">True</property>
-                    <property name="group">radiobutton1</property>
+                    <property name="group">radio_display_units_oz</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
