@@ -1,3 +1,5 @@
+import os
+import os.path
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import GLib, Gio, Gtk
@@ -13,9 +15,13 @@ class Application(Gtk.Application):
         self.window = None
         self.scanner = BluetoothScanner()
 
-        # TODO: use real data stored on disk, put db in correct XDG folder
-        self.datastore = Datastore("test.db")
-        self.datastore.set_daily_goal_volume(2471.936) # 87oz in mL
+        data_path = GLib.get_user_data_dir() + '/agua_amiga/'
+
+        if not os.path.exists(data_path):
+            os.mkdir(data_path)
+
+        database_name = "water.db"
+        self.datastore = Datastore(data_path + database_name)
 
 
         self.connect('shutdown', self.on_quit)
