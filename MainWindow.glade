@@ -8,6 +8,8 @@
     <property name="icon-name">org.gnome.Calendar</property>
   </object>
   <template class="MainWindow" parent="GtkApplicationWindow">
+    <property name="width-request">400</property>
+    <property name="height-request">250</property>
     <property name="can-focus">False</property>
     <property name="title" translatable="yes">Agua Amiga</property>
     <child>
@@ -107,6 +109,8 @@
             <property name="visible">True</property>
             <property name="can-focus">False</property>
             <property name="halign">start</property>
+            <property name="margin-start">4</property>
+            <property name="margin-end">4</property>
             <property name="label" translatable="yes">Discovered Water Bottles:</property>
           </object>
           <packing>

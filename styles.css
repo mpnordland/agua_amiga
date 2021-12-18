@@ -1,3 +1,9 @@
 calendar:not(.hightlight) {
   padding: 0.5rem;
 }
+
+progressbar.goal text {
+padding-top: 0.3rem;
+font-weight: 900;
+color: black;
+}
