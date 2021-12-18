@@ -57,6 +57,9 @@ class BluetoothScanner:
         if self.interfaces_removed_subscription is not None:
             self.interfaces_removed_subscription.disconnect()
 
+        for device in self.devices.values():
+            device.cleanup()
+
     def get_devices(self):
         return self.devices
 
@@ -74,7 +77,7 @@ class BluetoothScanner:
 class WaterBottle:
     """
     right now contains logic for Hidrate Spark 3
-    probably need to lots of abstraction/generalizing
+    probably need to do lots of abstraction/generalizing
     to work with other water bottles, which I don't have or know about existing.
     """
     BOTTLE_SIZE = 592
@@ -100,7 +103,7 @@ class WaterBottle:
     def sips_notification_handler(self, value):
         SipSize, total, secondsAgo, no_sips_left_on_device = self.parseSip(value)
         if SipSize > 0:
-            self.sip_stream.appendleft((SipSize, datetime.now() - timedelta(seconds=secondsAgo), "waterbottle"))
+            self.sip_stream.appendleft((SipSize, datetime.now() - timedelta(milliseconds=secondsAgo), "waterbottle"))
 
         if no_sips_left_on_device > 0:
             self.device.char_write(self.SIPS_CHARACTERISTIC_UUID, bytes.fromhex("57"))
@@ -123,11 +126,12 @@ class WaterBottle:
 
         secondsAgo = int.from_bytes(data[8:4:-1], "little") & -1
 
-        print("Sip Size: {0}, Total: {1}, Seconds Ago: {2}, Sips Left: {3}".format(
-            SipSize, total, secondsAgo, no_sips_left_on_device - 1))
+        # print("Sip Size: {0}, Total: {1}, Seconds Ago: {2}, Sips Left: {3}".format(
+        #     SipSize, total, secondsAgo, no_sips_left_on_device))
 
         return SipSize, total, secondsAgo, no_sips_left_on_device
 
 
     def cleanup(self):
         self.device.remove_notify(self.SIPS_CHARACTERISTIC_UUID)
+        self.device.disconnect()

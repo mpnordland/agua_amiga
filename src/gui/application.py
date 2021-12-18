@@ -18,6 +18,7 @@ class Application(Gtk.Application):
         self.datastore.set_daily_goal_volume(2471.936) # 87oz in mL
 
 
+        self.connect('shutdown', self.on_quit)
 
     def update_goal_progress_bar(self):
         vol_drank_today = self.datastore.get_volume_drunk_today()
@@ -53,3 +54,9 @@ class Application(Gtk.Application):
 
 
         self.window.present()
+
+
+    def on_quit(self, widget):
+        self.scanner.stop_scanner()
+
+
