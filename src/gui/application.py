@@ -3,7 +3,7 @@ import os.path
 import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Notify", "0.7")
-from gi.repository import GLib, Gio, Gtk, Notify
+from gi.repository import GLib, Gio, Gtk, Notify, Gdk
 
 from .main_window import MainWindow
 from bluetooth_scanner import BluetoothScanner
@@ -29,6 +29,15 @@ class Application(Gtk.Application):
         self.notification = Notify.Notification()
 
         self.connect('shutdown', self.on_quit)
+        
+        style_provider = Gtk.CssProvider()
+        style_provider.load_from_path("styles.css")
+
+        Gtk.StyleContext.add_provider_for_screen(
+            Gdk.Screen.get_default(),
+            style_provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        )
         
 
 

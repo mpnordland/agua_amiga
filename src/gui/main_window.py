@@ -2,6 +2,7 @@ from .dialogs import AddWaterDialog, PreferencesDialog
 from gi.repository import GLib, Gio, Gtk
 from datetime import datetime
 from datastore import Datastore, convert_from_display_to_mL, convert_from_mL_to_display
+from .streak_window import StreakWindow
 
 
 @Gtk.Template.from_file("MainWindow.glade")
@@ -9,6 +10,7 @@ class MainWindow(Gtk.ApplicationWindow):
     __gtype_name__ = "MainWindow"
 
     button_add_water: Gtk.Button = Gtk.Template.Child()
+    button_display_streak: Gtk.Button = Gtk.Template.Child()
     list_devices: Gtk.ListBox = Gtk.Template.Child()
     progress_daily_goal: Gtk.ProgressBar = Gtk.Template.Child()
 
@@ -19,6 +21,7 @@ class MainWindow(Gtk.ApplicationWindow):
 
         super().__init__(*args, **kwargs)
 
+        self.streak_window = None
     @Gtk.Template.Callback()
     def button_add_water_clicked_cb(self, widget, **_kwargs):
         assert self.button_add_water == widget
@@ -37,6 +40,17 @@ class MainWindow(Gtk.ApplicationWindow):
     @Gtk.Template.Callback()
     def button_preferences_clicked_cb(self, widget, **_kwargs):
         self.show_preferences_dialog()
+
+    def streak_window_destroy_cb(self, widget, **_kwargs):
+        self.button_display_streak.set_sensitive(True)
+
+
+    @Gtk.Template.Callback()
+    def button_display_streak_clicked_cb(self, widget, **_kwargs):
+            self.button_display_streak.set_sensitive(False)
+            streak_window = StreakWindow(datastore = self.datastore)
+            streak_window.connect('destroy', self.streak_window_destroy_cb)
+            streak_window.show()
 
     def show_preferences_dialog(self):
         display_units = self.datastore.get_display_units()

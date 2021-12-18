@@ -64,6 +64,12 @@ class Datastore:
 
         return 0
 
+    def get_days_drunk_water(self, date_range_start, date_range_end):
+        self.cursor.execute('''SELECT date(time), SUM(volume) FROM drinks WHERE datetime(time) >= datetime(:day_start) AND datetime(time) < datetime(:day_end) GROUP BY date(time)''',
+                            {'day_start': date_range_start, 'day_end': date_range_end})
+
+        return self.cursor.fetchall()
+
     def ensure_database_tables_exist(self):
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS settings (name text primary key, value text)''')
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS goals (volume real, time timestamp)''')
