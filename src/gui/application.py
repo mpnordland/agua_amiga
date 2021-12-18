@@ -58,7 +58,7 @@ class Application(Gtk.Application):
 
         one_hour = 60 * 60
         GLib.timeout_add_seconds(5, self.update_device_list)
-        GLib.timeout_add_seconds(one_hour, self.remind_to_drink)
+        GLib.timeout_add_seconds(timedelta(hours=1).seconds, self.remind_to_drink)
 
 
         self.window.present()
