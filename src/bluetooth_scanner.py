@@ -31,9 +31,7 @@ class BluetoothScanner:
                 for path, child in self.bluez.GetManagedObjects().items():
                     if 'org.bluez.Adapter1' in child.keys():
                         self.adapter = self.system_bus.get('org.bluez', path)
-
-                    else:
-                        self._interface_added_listener(path, child)
+                        break
 
                 break
 
@@ -46,6 +44,9 @@ class BluetoothScanner:
         if self.adapter is None:
             raise BluetoothNotSupported("Could not find Bluetooth adapter")
 
+    def bluetooth_enabled(self):
+        return self.adapter and self.adapter.Powered
+
     def start_scanner(self):
         """
         maybe instead pass a callback and add entries to ui that way.
@@ -55,11 +56,21 @@ class BluetoothScanner:
 
         self.interfaces_added_subscription = self.bluez.InterfacesAdded.connect(self._interface_added_listener)
         self.interfaces_removed_subscription = self.bluez.InterfacesRemoved.connect(self._interface_removed_listener)
+
+        # check for already discovered devices
+        for path, child in self.bluez.GetManagedObjects().items():
+            self._interface_added_listener(path, child)
+
         self.adapter.SetDiscoveryFilter({'Transport': Variant.new_string('le')})
         self.adapter.StartDiscovery()
 
+    def running(self):
+        return self.bluetooth_enabled() and self.adapter.Discovering
+
     def stop_scanner(self):
-        self.adapter.StopDiscovery()
+        if self.bluetooth_enabled():
+            self.adapter.StopDiscovery()
+
         if self.interfaces_added_subscription is not None:
             self.interfaces_added_subscription.disconnect()
         
@@ -69,6 +80,8 @@ class BluetoothScanner:
         for device in self.devices.values():
             device.cleanup()
 
+    def close(self):
+        self.stop_scanner()
         self.system_bus.con.close_sync(None)
 
     def get_devices(self):

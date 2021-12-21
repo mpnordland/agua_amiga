@@ -13,6 +13,7 @@ class MainWindow(Gtk.ApplicationWindow):
     button_display_streak: Gtk.Button = Gtk.Template.Child()
     list_devices: Gtk.ListBox = Gtk.Template.Child()
     progress_daily_goal: Gtk.ProgressBar = Gtk.Template.Child()
+    box_devices_searching_placeholder: Gtk.Box = Gtk.Template.Child()
 
     def __init__(self, *args, **kwargs) -> None:
         assert 'datastore' in kwargs.keys()
@@ -22,7 +23,6 @@ class MainWindow(Gtk.ApplicationWindow):
         super().__init__(*args, **kwargs)
 
         self.streak_window = None
-        self.bluetooth_enabled = True
 
     @Gtk.Template.Callback()
     def button_add_water_clicked_cb(self, widget, **_kwargs):
@@ -85,16 +85,30 @@ class MainWindow(Gtk.ApplicationWindow):
             f"{convert_from_mL_to_display(vol_drank_today, display_units):.2f} of {convert_from_mL_to_display(goal_volume, display_units):.2f} {display_units.value}")
 
 
-    def mark_bluetooth_disabled(self):
+    def mark_bluetooth_error(self):
         msg = "Bluetooth scanning failed to start or isn't supported"
         label = Gtk.Label(label=msg)
         label.show()
         self.list_devices.set_placeholder(label)
         self.list_devices.show_all()
-        self.bluetooth_enabled = False
+    
+    def mark_bluetooth_disabled(self):
+        msg = "Bluetooth is turned off or unavailable"
+        label = Gtk.Label(label=msg)
+        label.show()
+        self.list_devices.set_placeholder(label)
+        self.clear_device_list()
+        self.list_devices.show_all()
+
+    def mark_bluetooth_enabled(self):
+        self.list_devices.set_placeholder(self.box_devices_searching_placeholder)
+        self.list_devices.show_all()
+
+    def clear_device_list(self):
+        self.list_devices.foreach(lambda child: child.destroy())
 
     def update_device_list(self, devices):
-        self.list_devices.foreach(lambda child: child.destroy())
+        self.clear_device_list()
         for dev_name in devices:
             self.list_devices.add(Gtk.Label(label=dev_name))
 
