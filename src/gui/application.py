@@ -65,7 +65,7 @@ class Application(Gtk.Application):
 
         self.window.present()
 
-    def on_quit(self, widget):
+    def on_quit(self, widget=None):
         self.scanner.close()
 
     def remind_to_drink(self):

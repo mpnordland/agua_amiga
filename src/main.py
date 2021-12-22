@@ -2,4 +2,9 @@
 import sys
 from gui.application import Application
 
-Application().run(sys.argv)
+application = Application()
+
+try:
+    application.run(sys.argv)
+except KeyboardInterrupt:
+    application.on_quit()

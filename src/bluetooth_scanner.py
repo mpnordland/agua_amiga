@@ -47,13 +47,13 @@ class BluetoothNotSupported(Exception):
 class BluetoothScanner:
 
     def __init__(self, status_callback, devices_callback) -> None:
-        self.interfaces_added_subscription = None
-        self.interfaces_removed_subscription = None
         self.sip_stream = deque()
         self.devices = {}
 
         self.status_callback = status_callback
         self.devices_callback = devices_callback
+
+        self.traceback_printer = traceback_printer(self.__class__.__name__)
 
         # sometimes when the app is closed and then immediately restarted
         # bluez or DBus just disconnects immediately when we try to read out
@@ -101,20 +101,15 @@ class BluetoothScanner:
             adapter_properties.on_properties_changed(self._adapter_properties_listener)
 
             def _check_powered_on(powered):
-                print("are we powered?", powered)
                 if powered:
-                    self._start_adapter_discovering(adapter_proxy).catch(traceback.print_exception)
-                    dbus_callback_promise(obj_manager.call_get_managed_objects) \
-                        .then(lambda children: children[0]) \
-                        .then(
-                            lambda children: [self._interface_added_listener(
-                                path, child) for path, child in children.items()],
-                    ).catch(traceback.print_exception)
+                    self._start_adapter_discovering().catch(traceback_printer("start scanner check powered on"))
+                    self._get_discovered_devices()
                     self._send_status_update(BluetoothStatus.ENABLED)
                 else:
                     self._send_status_update(BluetoothStatus.DISABLED)
 
-            dbus_callback_promise(adapter.get_powered).then(_check_powered_on, traceback.print_exception)
+            dbus_callback_promise(adapter.get_powered).then(
+                _check_powered_on, traceback_printer("start scanner get_powered"))
 
         Promise.all([
             self.bluez_promise.then(lambda bluez: bluez.get_interface(OBJ_MANAGER_IFACE)),
@@ -138,7 +133,7 @@ class BluetoothScanner:
             adapter_properties = adapter_proxy.get_interface(PROPERTIES_IFACE)
 
             adapter_properties.off_properties_changed(self._adapter_properties_listener)
-            dbus_callback_promise(adapter.call_stop_discovery).catch(self._promise_error_handler)
+            dbus_callback_promise(adapter.call_stop_discovery)
 
             self._send_status_update(BluetoothStatus.DISABLED)
 
@@ -148,15 +143,14 @@ class BluetoothScanner:
         ]).then(lambda args: _stop(*args), self._promise_error_handler)
 
     def close(self):
-        self.stop_scanner().then(lambda _: dbus_callback_promise(self.system_bus.disconnect)).then(lambda _: print("all done, goodbye!"))
+        self.stop_scanner().then(lambda _: dbus_callback_promise(self.system_bus.disconnect))
 
     def _interface_added_listener(self, path, interfaces):
         if DEVICE_IFACE in interfaces.keys() and not interfaces[DEVICE_IFACE]['Blocked'].value and interfaces[DEVICE_IFACE]['Alias'].value in ['h2o10C28']:
             def create_water_bottle_and_notify(device, obj_manager):
                 self.devices[path] = WaterBottle(interfaces[DEVICE_IFACE]['Alias'].value,
                                                  BtleDevice(path, device, obj_manager), self.sip_stream)
-                print("scheduling devices update")
-                GLib.idle_add(self.devices_callback, self.devices)
+                self._send_devices_update()
 
             Promise.all([self._get_dbus_proxy_object(BLUEZ_BUS_NAME, path),
                          self._obj_manager_promise()]) \
@@ -173,21 +167,30 @@ class BluetoothScanner:
             if props_changed["Powered"].value:
                 self._start_adapter_discovering()
                 self._send_status_update(BluetoothStatus.ENABLED)
+                self._send_devices_update()
             else:
                 self._send_status_update(BluetoothStatus.DISABLED)
 
-    def _start_adapter_discovering(self, adapter=None):
+    def _start_adapter_discovering(self):
         return self.adapter_promise.then(lambda adapter_proxy: adapter_proxy.get_interface(ADAPTER_IFACE)) \
-            .then(print_and_return) \
             .then(lambda adapter: dbus_callback_promise(adapter.call_set_discovery_filter, {'Transport': Variant('s', 'le')})
                   .then(lambda _: dbus_callback_promise(adapter.call_start_discovery))) \
+            .catch(traceback_printer("start adapter discovering")) \
             .catch(self._promise_error_handler)
+
+    def _get_discovered_devices(self):
+        return self._obj_manager_promise().then(lambda obj_manager:
+                                                dbus_callback_promise(obj_manager.call_get_managed_objects)
+                                                .then(lambda children: children[0])
+                                                .then(
+                                                    lambda children: [self._interface_added_listener(path, child) for path, child in children.items()],
+                                                )).catch(traceback_printer("get discovered devices"))
 
     def _get_dbus_proxy_object(self, bus_name, path):
         return dbus_callback_promise(self.system_bus.introspect, bus_name, path).then(lambda introspection: self.system_bus.get_proxy_object(bus_name, path, introspection))
 
     def _promise_error_handler(self, error: Exception):
-        traceback.print_exception(error)
+        traceback_printer("promise error handler")(error)
         self._send_status_update(BluetoothStatus.ERROR, error)
 
     def _send_status_update(self, status: BluetoothStatus, data: Any = None):
@@ -196,6 +199,9 @@ class BluetoothScanner:
             return False
 
         GLib.idle_add(_idle_callback)
+
+    def _send_devices_update(self):
+        GLib.idle_add(self.devices_callback, self.devices)
 
     def _obj_manager_promise(self):
         return self.bluez_promise.then(lambda bluez: bluez.get_interface(OBJ_MANAGER_IFACE))
@@ -217,6 +223,14 @@ def print_and_return(*args):
     return args if len(args) > 1 else args[0]
 
 
+def traceback_printer(location):
+    def _printer(error):
+        print(location)
+        traceback.print_exception(error)
+
+    return _printer
+
+
 class BtleDevice:
     def __init__(self, path, device_proxy, obj_manager) -> None:
         self.path = path
@@ -226,6 +240,7 @@ class BtleDevice:
         self.obj_manager = obj_manager
         self.characteristics_promise = Promise.reject(Exception("Couldn't get device characteristics"))
         self.handlers = defaultdict(list)
+        self.traceback_printer = traceback_printer(self.__class__.__name__)
 
     def connect(self):
 
@@ -262,7 +277,7 @@ class BtleDevice:
             self.properties_interface.on_properties_changed(_collect_characteristics)
 
         self.characteristics_promise = dbus_callback_promise(self.device_interface.get_services_resolved).then(
-            _get_now_or_later).catch(traceback.print_exception)
+            _get_now_or_later).catch(self.traceback_printer)
         return dbus_callback_promise(self.device_interface.call_connect)
 
     def disconnect(self):
@@ -273,7 +288,7 @@ class BtleDevice:
             if uuid.casefold() in characteristics:
                 characteristic = characteristics[uuid.casefold()]
                 characteristic_interface = characteristic.get_interface(CHARACTERISTIC_IFACE)
-                return dbus_callback_promise(characteristic_interface.call_read_value, {}).then(print_and_return)
+                return dbus_callback_promise(characteristic_interface.call_read_value, {})
 
         return self.characteristics_promise.then(_read_characteristic)
 
@@ -284,10 +299,12 @@ class BtleDevice:
                 characteristic_interface = characteristic.get_interface(CHARACTERISTIC_IFACE)
                 return dbus_callback_promise(characteristic_interface.call_write_value, value, {})
 
-        return self.characteristics_promise.then(_write_characteristic).catch(traceback.print_exception)
+        return self.characteristics_promise.then(_write_characteristic).catch(self.traceback_printer)
 
     def on_value_change(self, uuid, handler):
         uuid = uuid.casefold()
+        notify_handler = CharacteristicNotifyHandler(handler)
+
 
         def _add_notification(characteristics):
             if uuid in characteristics:
@@ -297,17 +314,20 @@ class BtleDevice:
             else:
                 return Promise.reject(KeyError(f"UUID {uuid} not found"))
 
+            def _remove_handler_on_start_notify_fail(error):
+                characteristic_properties_interface.off_properties_changed(notify_handler)
+                del self.handlers[uuid]
+
             def _check_flags(flags):
                 if "notify" in flags or "indicate" in flags:
-                    notify_handler = CharacteristicNotifyHandler(handler)
                     characteristic_properties_interface.on_properties_changed(notify_handler)
                     self.handlers[uuid].append(notify_handler)
                     return dbus_callback_promise(characteristic_interface.call_start_notify)
                 else:
                     return Promise.reject(NotImplementedError(f"Notifications not implemented on {uuid}"))
-            return dbus_callback_promise(characteristic_interface.get_flags).then(_check_flags).catch(traceback.print_exception)
+            return dbus_callback_promise(characteristic_interface.get_flags).then(_check_flags).catch(self.traceback_printer)
 
-        return self.characteristics_promise.then(_add_notification).catch(traceback.print_exception)
+        return self.characteristics_promise.then(_add_notification).catch(self.traceback_printer)
 
     def remove_notify(self, uuid):
         uuid = uuid.casefold()
@@ -323,11 +343,12 @@ class BtleDevice:
 
                 del self.handlers[uuid]
 
-                return dbus_callback_promise(characteristic_interface.call_stop_notify)
+                return dbus_callback_promise(characteristic_interface.call_stop_notify).catch(lambda _: Promise.resolve(None))
+
 
             return Promise.resolve(None)
 
-        return self.characteristics_promise.then(_remove_notify).catch(traceback.print_exception)
+        return self.characteristics_promise.then(_remove_notify).catch(self.traceback_printer)
 
     def _get_dbus_proxy_object(self, bus_name, path):
         return dbus_callback_promise(self.system_bus.introspect, bus_name, path) \
@@ -350,14 +371,15 @@ class WaterBottle:
         """
         self.sip_stream = sip_stream
 
+        self.traceback_printer = traceback_printer(self.__class__.__name__)
         self.device = device
         self.name = name
-        self.device.connect()
-        self.device.on_value_change(self.SIPS_CHARACTERISTIC_UUID, self.sips_notification_handler)
+        self.device.connect().then(lambda _: self.device.on_value_change(self.SIPS_CHARACTERISTIC_UUID, self.sips_notification_handler))
+        
 
         self.device.char_read(self.SIPS_CHARACTERISTIC_UUID) \
             .then(lambda value: value[0]) \
-            .then(self.sips_notification_handler, traceback.print_exception)
+            .then(self.sips_notification_handler, self.traceback_printer)
 
     def sips_notification_handler(self, value):
         SipSize, total, secondsAgo, count_of_sips_on_device = self.parseSip(value)
@@ -384,8 +406,8 @@ class WaterBottle:
 
         secondsAgo = int.from_bytes(data[8:4:-1], "little") & -1
 
-        print("Sip Size: {0}, Total: {1}, Seconds Ago: {2}, Sips Left: {3}".format(
-            SipSize, total, secondsAgo, no_sips_left_on_device))
+        # print("Sip Size: {0}, Total: {1}, Seconds Ago: {2}, Sips Left: {3}".format(
+        #     SipSize, total, secondsAgo, no_sips_left_on_device))
 
         return SipSize, total, secondsAgo, no_sips_left_on_device
 
