@@ -384,7 +384,7 @@ class WaterBottle:
     def sips_notification_handler(self, value):
         SipSize, total, secondsAgo, count_of_sips_on_device = self.parseSip(value)
         if SipSize > 0:
-            self.sip_stream.appendleft((SipSize, datetime.now() - timedelta(milliseconds=secondsAgo), "waterbottle"))
+            self.sip_stream.appendleft((SipSize, datetime.now() - timedelta(milliseconds=secondsAgo), self.name))
 
         if count_of_sips_on_device > 0:
             self.device.char_write(self.SIPS_CHARACTERISTIC_UUID, bytes.fromhex("57"))
