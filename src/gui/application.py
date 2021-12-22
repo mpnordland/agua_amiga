@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 import os
 import os.path
 import gi
@@ -6,9 +6,9 @@ gi.require_version("Gtk", "3.0")
 gi.require_version("Notify", "0.7")
 from gi.repository import GLib, Gio, Gtk, Notify, Gdk
 
-from datastore import Datastore
-from bluetooth_scanner import BluetoothNotSupported, BluetoothScanner, BluetoothStatus
 from .main_window import MainWindow
+from bluetooth_scanner import BluetoothNotSupported, BluetoothScanner, BluetoothStatus
+from datastore import Datastore
 
 class Application(Gtk.Application):
     def __init__(self, *args, **kwargs):
@@ -50,8 +50,6 @@ class Application(Gtk.Application):
             if have_updates:
                 self.window.update_goal_progress_bar()
 
-
-
         return True  # so this method keeps getting called from the timeout
 
     def do_activate(self):
@@ -72,9 +70,24 @@ class Application(Gtk.Application):
         volume_drunk = self.datastore.get_volume_drunk_today()
         goal_volume = self.datastore.get_daily_goal_volume()
 
-        if volume_drunk <= goal_volume:
+        # want to notify user if not keeping up with their goal
+        # say a sliding window where they get a notification if
+        # the percentage of the day completed is 10 percentage points
+        # greater than the percentage of the goal drank
+
+        # define the day as starting at 09:00 and ending at 21:00
+
+        hours_in_day = 12
+        start_hour = 6
+        end_hour = start_hour + hours_in_day
+        current_time = datetime.now()
+
+        day_percentage = (current_time - timedelta(hours=start_hour)).hour / hours_in_day
+        goal_percentage = volume_drunk / goal_volume
+
+        if volume_drunk < goal_volume and day_percentage > goal_percentage:
             self.notification.update("Hey, you should drink some water!",
-                                     f"You have drunk {volume_drunk / goal_volume:.2%} of your goal for today.")
+                                     f"You have drunk {goal_percentage:.2%} of your goal for today.")
             self.notification.show()
         else:
             self.notification.close()
@@ -93,8 +106,6 @@ class Application(Gtk.Application):
         else:
             self.scanner.stop_scanner()
             self.window.mark_bluetooth_error()
-        
-
 
     def devices_update(self, devices):
         if self.window:
