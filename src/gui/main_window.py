@@ -22,6 +22,8 @@ class MainWindow(Gtk.ApplicationWindow):
 
         super().__init__(*args, **kwargs)
 
+        self.list_devices.hide()
+
         self.streak_window = None
 
     @Gtk.Template.Callback()
@@ -86,7 +88,7 @@ class MainWindow(Gtk.ApplicationWindow):
 
 
     def mark_bluetooth_error(self):
-        msg = "Bluetooth scanning failed to start or isn't supported"
+        msg = "Bluetooth scanning failed or isn't supported"
         label = Gtk.Label(label=msg)
         label.show()
         self.list_devices.set_placeholder(label)

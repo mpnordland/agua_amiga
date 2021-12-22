@@ -7,7 +7,7 @@ gi.require_version("Notify", "0.7")
 from gi.repository import GLib, Gio, Gtk, Notify, Gdk
 
 from datastore import Datastore
-from bluetooth_scanner import BluetoothNotSupported, BluetoothScanner
+from bluetooth_scanner import BluetoothNotSupported, BluetoothScanner, BluetoothStatus
 from .main_window import MainWindow
 
 class Application(Gtk.Application):
@@ -15,10 +15,7 @@ class Application(Gtk.Application):
         super().__init__(*args, application_id="me.rehack.agua_amiga",
                          flags=Gio.ApplicationFlags.FLAGS_NONE, **kwargs)
         self.window = None
-        try:
-            self.scanner = BluetoothScanner()
-        except BluetoothNotSupported as e:
-            self.scanner = None
+        self.scanner = BluetoothScanner(self.bluetooth_status_update, self.devices_update)
 
         data_path = GLib.get_user_data_dir() + '/agua_amiga/'
 
@@ -43,25 +40,17 @@ class Application(Gtk.Application):
         )
 
     def update(self):
-        have_updates = False
-        if self.window:
-            if self.scanner and self.scanner.running():
-                have_updates = len(self.scanner.sip_stream) > 0
-                while len(self.scanner.sip_stream):
-                    sip = self.scanner.sip_stream.pop()
-                    self.datastore.save_sip(*sip)
+        if self.window and self.scanner:
+            have_updates = len(self.scanner.sip_stream)
 
-                devices = self.scanner.get_devices()
-                self.window.update_device_list([dev.name for dev in devices.values()])
-            elif self.scanner and self.scanner.bluetooth_enabled():
-                self.scanner.start_scanner()
-                self.window.mark_bluetooth_enabled()
-            elif self.scanner:
-                self.scanner.stop_scanner()
-                self.window.mark_bluetooth_disabled()
+            while len(self.scanner.sip_stream):
+                sip = self.scanner.sip_stream.pop()
+                self.datastore.save_sip(*sip)
 
             if have_updates:
                 self.window.update_goal_progress_bar()
+
+
 
         return True  # so this method keeps getting called from the timeout
 
@@ -69,12 +58,7 @@ class Application(Gtk.Application):
         self.window = self.window or MainWindow(application=self, datastore=self.datastore)
         self.window.ensure_goal_set()
         self.window.update_goal_progress_bar()
-        if self.scanner and self.scanner.bluetooth_enabled():
-            self.scanner.start_scanner()
-        elif self.scanner:
-            self.window.mark_bluetooth_disabled()
-        else:
-            self.window.mark_bluetooth_error()
+        self.scanner.start_scanner()
 
         GLib.timeout_add_seconds(5, self.update)
         GLib.timeout_add_seconds(timedelta(hours=1).seconds, self.remind_to_drink)
@@ -82,10 +66,7 @@ class Application(Gtk.Application):
         self.window.present()
 
     def on_quit(self, widget):
-        if self.window:
-            self.window.hide()
-        if self.scanner:
-            self.scanner.close()
+        self.scanner.close()
 
     def remind_to_drink(self):
         volume_drunk = self.datastore.get_volume_drunk_today()
@@ -99,3 +80,22 @@ class Application(Gtk.Application):
             self.notification.close()
 
         return True
+
+    def bluetooth_status_update(self, status: BluetoothStatus, data):
+        if self.window is None:
+            return False
+
+        if status == BluetoothStatus.ENABLED:
+            self.window.mark_bluetooth_enabled()
+        elif status == BluetoothStatus.DISABLED:
+            self.window.mark_bluetooth_disabled()
+
+        else:
+            self.scanner.stop_scanner()
+            self.window.mark_bluetooth_error()
+        
+
+
+    def devices_update(self, devices):
+        if self.window:
+            self.window.update_device_list([dev.name for dev in devices.values()])
