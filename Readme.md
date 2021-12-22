@@ -29,3 +29,13 @@ Drinks: a list of water intakes.
 
 We talk to bluez bluetooth devices over dbus. The pydbus library is integrated with the Glib MainLoop.
 The understanding so far, is that as devices are discovered, the events will be triggered inside of the MainLoop and will get processed, including reading sip data and storing it in the sips_stream deque property on the bluetooth scanner. Then there will be an idle callback that will pull all the queued sip data and update the UI and write to the database.
+
+
+# Acknoledgements
+
+Documentation of the Hidrate bottle communication protocol
+<https://github.com/choonkiatlee/wban-python/blob/master/Hidrate.py>
+Copied the sip notifcation parsing code.
+
+The BtleDevice class is inspired by <https://github.com/ukBaz/BLE_GATT> and implements a kind of asynchronous version of its
+API.
