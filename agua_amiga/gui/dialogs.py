@@ -1,11 +1,11 @@
 import gi
 
-from datastore import Unit
+from agua_amiga.datastore import Unit
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
 
-@Gtk.Template.from_file("AddWaterDialog.glade")
+@Gtk.Template.from_file("ui_definitions/AddWaterDialog.glade")
 class AddWaterDialog(Gtk.Dialog):
     __gtype_name__ = "AddWaterDialog"
 
@@ -28,7 +28,7 @@ class AddWaterDialog(Gtk.Dialog):
         return self.spin_button_add_water.get_value()
 
 
-@Gtk.Template.from_file("Preferences.glade")
+@Gtk.Template.from_file("ui_definitions/Preferences.glade")
 class PreferencesDialog(Gtk.Dialog):
     __gtype_name__ = "PreferencesDialog"
 

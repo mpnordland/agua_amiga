@@ -7,8 +7,8 @@ gi.require_version("Notify", "0.7")
 from gi.repository import GLib, Gio, Gtk, Notify, Gdk
 
 from .main_window import MainWindow
-from bluetooth_scanner import BluetoothNotSupported, BluetoothScanner, BluetoothStatus
-from datastore import Datastore
+from agua_amiga.bluetooth_scanner import BluetoothNotSupported, BluetoothScanner, BluetoothStatus
+from agua_amiga.datastore import Datastore
 
 class Application(Gtk.Application):
     def __init__(self, *args, **kwargs):

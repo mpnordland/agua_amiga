@@ -1,9 +1,9 @@
 from gi.repository import GLib, Gio, Gtk
 from datetime import datetime, timedelta, date
-from datastore import Datastore, convert_from_display_to_mL, convert_from_mL_to_display
+from agua_amiga.datastore import Datastore, convert_from_display_to_mL, convert_from_mL_to_display
 
 
-@Gtk.Template.from_file("StreakWindow.glade")
+@Gtk.Template.from_file("ui_definitions/StreakWindow.glade")
 class StreakWindow(Gtk.Window):
     __gtype_name__ = "StreakWindow"
 

@@ -1,3 +1,25 @@
 [tool.pyright]
 reportPrivateImportUsage = "warning"
 reportOptionalMethodAccess = "warning"
+[tool.poetry]
+name = "agua_amiga"
+version = "1"
+description = "A water tracking app that can talk to bluetooth water bottles"
+authors = ["Micah Nordland <micah@rehack.me>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.11"
+PyGObject = "^3.42.0"
+dbus-next = "^0.2.3"
+promise = "^2.3"
+
+[tool.poetry.dev-dependencies]
+pyinstaller = "^4.7"
+
+[tool.poetry.scripts]
+agua_amiga = "agua_amiga:run"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

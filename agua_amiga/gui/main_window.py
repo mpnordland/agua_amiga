@@ -1,11 +1,11 @@
-from .dialogs import AddWaterDialog, PreferencesDialog
 from gi.repository import GLib, Gio, Gtk
 from datetime import datetime
-from datastore import Datastore, convert_from_display_to_mL, convert_from_mL_to_display
+from agua_amiga.datastore import Datastore, convert_from_display_to_mL, convert_from_mL_to_display
+from .dialogs import AddWaterDialog, PreferencesDialog
 from .streak_window import StreakWindow
 
 
-@Gtk.Template.from_file("MainWindow.glade")
+@Gtk.Template.from_file("ui_definitions/MainWindow.glade")
 class MainWindow(Gtk.ApplicationWindow):
     __gtype_name__ = "MainWindow"
 
