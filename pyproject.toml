@@ -5,7 +5,7 @@ reportOptionalMethodAccess = "warning"
 name = "agua_amiga"
 version = "1"
 description = "A water tracking app that can talk to bluetooth water bottles"
-authors = ["Micah Nordland <micah@rehack.me>"]
+authors = ["Maya Nordland <maya@rehack.me>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
