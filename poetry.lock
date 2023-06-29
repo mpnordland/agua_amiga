@@ -17,10 +17,14 @@ version = "0.2.3"
 description = "A zero-dependency DBus library for Python with asyncio support"
 optional = false
 python-versions = ">=3.6.0"
-files = [
-    {file = "dbus_next-0.2.3-py3-none-any.whl", hash = "sha256:58948f9aff9db08316734c0be2a120f6dc502124d9642f55e90ac82ffb16a18b"},
-    {file = "dbus_next-0.2.3.tar.gz", hash = "sha256:f4eae26909332ada528c0a3549dda8d4f088f9b365153952a408e28023a626a5"},
-]
+files = []
+develop = false
+
+[package.source]
+type = "git"
+url = "https://github.com/altdesktop/python-dbus-next.git"
+reference = "HEAD"
+resolved_reference = "ab566e16a71bfc9d7e0d29676aa459ec060e72c5"
 
 [[package]]
 name = "macholib"
@@ -181,4 +185,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10, <3.13"
-content-hash = "6741abf1fd3d24dcac54ffb5be2295c9d49de719a8bce78d0f9b28287cf92222"
+content-hash = "7c659a7acd8e924173a817c92e335d24f871601bb193f7e5b01f49c275c86287"

@@ -10,8 +10,8 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.10, <3.13"
-PyGObject = "^3.42.0"
-dbus-next = "^0.2.3"
+PyGObject = "^3.44.0"
+dbus-next = { git = "https://github.com/altdesktop/python-dbus-next.git" }
 promise = "^2.3"
 
 [tool.poetry.dev-dependencies]
