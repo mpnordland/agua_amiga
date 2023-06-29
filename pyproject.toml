@@ -9,13 +9,13 @@ authors = ["Maya Nordland <maya@rehack.me>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.11"
+python = ">=3.10, <3.13"
 PyGObject = "^3.42.0"
 dbus-next = "^0.2.3"
 promise = "^2.3"
 
 [tool.poetry.dev-dependencies]
-pyinstaller = "^4.7"
+pyinstaller = "^5.13"
 
 [tool.poetry.scripts]
 agua_amiga = "agua_amiga:run"
